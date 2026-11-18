@@ -27,7 +27,7 @@ export function JoinSection({ initialState, signupEnabled, paypalUrl }: { initia
     <div className="join-panels">
       <div className="signup-card"><div className="form-heading"><div><span className="small-kicker">STAY INFORMED</span><h3>Get email updates</h3></div><span className="form-icon" aria-hidden="true">✉</span></div>
         <p>Join the Rank America email list. State selection helps us organize local updates.</p>
-        {!signupEnabled && <p className="setup-message" role="status">Signup preview: submissions are disabled until the Google Sheet connection and contact email are configured.</p>}
+        {!signupEnabled && <p className="setup-message" role="status">Signup preview: submissions are disabled until the Google Sheet connection is configured.</p>}
         <form onSubmit={submit}>
           <label htmlFor="signup-name">Full name <span>*</span></label><input id="signup-name" autoComplete="name" required minLength={2} maxLength={100} placeholder="Your name" value={form.name} onChange={e => patch("name",e.target.value)} disabled={!signupEnabled || status === "sending"} />
           <div className="signup-row">

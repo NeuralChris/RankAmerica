@@ -11,15 +11,9 @@ FROM node:22-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# NEXT_PUBLIC_* values are inlined into the bundle at build time (and the
-# /privacy page is prerendered), so they must be supplied here, not only at runtime.
-ARG NEXT_PUBLIC_CONTACT_EMAIL=""
-ARG NEXT_PUBLIC_PAYPAL_DONATION_URL=""
-ENV NEXT_PUBLIC_CONTACT_EMAIL=$NEXT_PUBLIC_CONTACT_EMAIL \
-    NEXT_PUBLIC_PAYPAL_DONATION_URL=$NEXT_PUBLIC_PAYPAL_DONATION_URL \
-    NEXT_TELEMETRY_DISABLED=1
-
+ENV NEXT_TELEMETRY_DISABLED=1
+# All site configuration (sheet ID, contact email, PayPal URL) is read at runtime
+# from the Cloud Run service's environment, so the image needs no build args.
 RUN npm run build
 
 # ---- runtime: minimal image with only the standalone output ----

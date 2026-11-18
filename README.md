@@ -36,64 +36,51 @@ Only `CO.webp` is populated in this first structural build. The default image is
 
 The `x-vercel-ip-country-region` header is set by Vercel in deployed environments; local development typically has no state. Do not trust it as proof of residence and do not use it to assign people to supporter states without their selection. Visitors using VPNs, enterprise networks, or mobile carriers may be assigned the wrong state. The signup form lets people choose their actual state.
 
-## Google Sheet setup — not activated yet
+## Google Sheet signups
 
-Your existing spreadsheet is **Rank America Signups**. Its ID should be provided privately as `GOOGLE_SPREADSHEET_ID`. Do not put credentials in frontend code or commit `.env.local`.
+Signups are written to the **Rank America Signups** spreadsheet, one tab per state (e.g. `Colorado`, `New York`), so state-specific newsletters can pull from a single tab. Each row has **Signed Up (UTC), Name, Email, Address, Phone, State, Consent, Source**. A state's tab is created automatically on its first signup; `npm run setup:sheets` pre-creates all 50 if you want them visible up front. Existing tabs and rows are never modified.
 
-1. Create a Google Cloud service account, enable the Google Sheets API, and share the existing spreadsheet with the service-account email as Editor.
-2. Configure `GOOGLE_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` (multi-line key or escaped `\\n`) and `NEXT_PUBLIC_CONTACT_EMAIL` in `.env.local`.
-3. To initialize the 50 state tabs once, run (from a shell with those environment variables exported):
+Auth is keyless by default: the app uses Google Application Default Credentials, which on Cloud Run is the service's runtime service account. No private key is stored anywhere.
 
-```bash
-node --env-file=.env.local --experimental-strip-types scripts/setup-state-sheets.mjs
-```
+1. Create a dedicated service account and enable the Sheets API (one time):
 
-4. Restart the Next.js server. Only then does the signup UI enable. State sheets contain: **Signed Up (UTC), Name, Email, Address, Phone, State, Consent, Source**.
-5. Test with a controlled signup and inspect its entry in the appropriate state tab. Do not launch until a working unsubscribe process, privacy policy, spam mitigation/rate limiting, and access control review are in place. The provided API intentionally returns `503` when unconfigured; it does not claim a signup was saved.
+   ```bash
+   gcloud services enable sheets.googleapis.com --project ranked-choice-515101
+   gcloud iam service-accounts create rank-america-web --display-name="Rank America website" --project ranked-choice-515101
+   ```
 
-This stage does not edit the user's Google Sheet or collect any personal data. A spreadsheet is not a mailing system—email sending and unsubscribes must be separately integrated before sending campaigns.
+2. Share the spreadsheet with `rank-america-web@ranked-choice-515101.iam.gserviceaccount.com` as **Editor** (Share button in Google Sheets; uncheck "Notify").
+3. Set `GOOGLE_SPREADSHEET_ID` (in `.env.local` locally, or as a Cloud Run environment variable). The signup form enables once it is set.
+4. Local development: let your own account act as the service account, then run the dev server or setup script:
+
+   ```bash
+   gcloud iam service-accounts add-iam-policy-binding rank-america-web@ranked-choice-515101.iam.gserviceaccount.com \
+     --member=user:YOU@example.com --role=roles/iam.serviceAccountTokenCreator
+   gcloud auth application-default login --impersonate-service-account=rank-america-web@ranked-choice-515101.iam.gserviceaccount.com
+   node --env-file=.env.local --experimental-strip-types scripts/setup-state-sheets.mjs   # optional
+   ```
+
+5. Test with a controlled signup and check the right state tab. Do not launch until a working unsubscribe process, privacy policy, spam mitigation/rate limiting, and access review are in place. The API returns `503` if it can't save a signup; it never claims success it didn't get.
+
+Hosts without Application Default Credentials can instead set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY` (a service-account key; escaped `\\n` is fine). A spreadsheet is not a mailing system—email sending and unsubscribes must be integrated separately before sending campaigns.
 
 ## Optional PayPal donations — not activated yet
 
-Create a **hosted PayPal donation page/button**, then set `NEXT_PUBLIC_PAYPAL_DONATION_URL` to its real HTTPS URL. Until this value exists, the site displays a setup notice rather than a fake payment link. Donations take place on PayPal. **Do not claim tax deductibility** unless your organization's status actually permits it. Review campaign finance and financial disclosures before fundraising in support of ballot measures.
+Create a **hosted PayPal donation page/button**, then set `PAYPAL_DONATION_URL` to its real HTTPS URL. Until this value exists, the site displays a setup notice rather than a fake payment link. Donations take place on PayPal. **Do not claim tax deductibility** unless your organization's status actually permits it. Review campaign finance and financial disclosures before fundraising in support of ballot measures.
 
 ## Deploy to Google Cloud Run
 
-`Dockerfile` builds a slim Next.js standalone image (listens on `$PORT`, default 8080). `cloudbuild.yaml` builds it, pushes it to Artifact Registry, and deploys it to Cloud Run.
+Production runs in the **Ranked Choice** Google Cloud project (`ranked-choice-515101`) as the Cloud Run service `rankamerica-git` (us-central1). A Cloud Build trigger created by Cloud Run's "continuous deployment" setup builds `Dockerfile` on every push to `main` of `NeuralChris/RankAmerica` and rolls the new image out. The `Dockerfile` produces a slim Next.js standalone image listening on `$PORT` (8080).
 
-One-time setup (replace `PROJECT_ID`; region defaults to `us-central1`):
-
-```bash
-gcloud config set project PROJECT_ID
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
-gcloud artifacts repositories create rank-america --repository-format=docker --location=us-central1
-
-# Let Cloud Build deploy to Cloud Run (Cloud Build runs as the Compute Engine default SA in newer projects)
-PROJECT_NUMBER=$(gcloud projects describe PROJECT_ID --format='value(projectNumber)')
-BUILD_SA=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
-gcloud projects add-iam-policy-binding PROJECT_ID --member=serviceAccount:$BUILD_SA --role=roles/run.admin
-gcloud projects add-iam-policy-binding PROJECT_ID --member=serviceAccount:$BUILD_SA --role=roles/iam.serviceAccountUser
-```
-
-Deploy:
+Deploys only swap the image, so configuration lives on the service and survives every push. All settings are read at runtime; nothing needs a rebuild:
 
 ```bash
-gcloud builds submit --config cloudbuild.yaml --substitutions=_CONTACT_EMAIL=privacy@example.org
+gcloud run services update rankamerica-git --project ranked-choice-515101 --region us-central1 \
+  --service-account=rank-america-web@ranked-choice-515101.iam.gserviceaccount.com \
+  --update-env-vars=GOOGLE_SPREADSHEET_ID=...   # PAYPAL_DONATION_URL=... when ready
 ```
 
-Or connect the GitHub repo to a Cloud Build trigger on pushes to `main` and set the `_…` substitutions in the trigger.
-
-**Enabling signups.** Store the service-account private key in Secret Manager, grant the Cloud Run runtime service account access, then pass the spreadsheet substitutions. The key secret is only attached when `_SPREADSHEET_ID` is set.
-
-```bash
-gcloud secrets create google-private-key --data-file=key.pem   # the PEM private key from the service-account JSON
-gcloud secrets add-iam-policy-binding google-private-key \
-  --member=serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com --role=roles/secretmanager.secretAccessor
-gcloud builds submit --config cloudbuild.yaml --substitutions=\
-_CONTACT_EMAIL=privacy@example.org,_SPREADSHEET_ID=...,_SHEETS_SA_EMAIL=...@....iam.gserviceaccount.com
-```
-
-`NEXT_PUBLIC_*` values are compiled into the build (and `/privacy` is prerendered), so changing them requires a rebuild, not just a Cloud Run env change.
+The runtime service account `rank-america-web` has no project roles; its only access is Editor on the signup spreadsheet. The trigger's build account (`1021652958246-compute@developer.gserviceaccount.com`) has `roles/iam.serviceAccountUser` on it so deploys can keep using it.
 
 **State detection on Cloud Run.** Cloud Run does not add IP-geolocation headers by itself, so the site will show the national hero unless it sits behind a Google Cloud external HTTPS load balancer with these custom request headers on the backend service:
 
