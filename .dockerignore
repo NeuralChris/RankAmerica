@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+.vercel
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Dockerfile
+.dockerignore
+cloudbuild.yaml

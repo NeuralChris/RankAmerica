@@ -57,6 +57,54 @@ This stage does not edit the user's Google Sheet or collect any personal data. A
 
 Create a **hosted PayPal donation page/button**, then set `NEXT_PUBLIC_PAYPAL_DONATION_URL` to its real HTTPS URL. Until this value exists, the site displays a setup notice rather than a fake payment link. Donations take place on PayPal. **Do not claim tax deductibility** unless your organization's status actually permits it. Review campaign finance and financial disclosures before fundraising in support of ballot measures.
 
+## Deploy to Google Cloud Run
+
+`Dockerfile` builds a slim Next.js standalone image (listens on `$PORT`, default 8080). `cloudbuild.yaml` builds it, pushes it to Artifact Registry, and deploys it to Cloud Run.
+
+One-time setup (replace `PROJECT_ID`; region defaults to `us-central1`):
+
+```bash
+gcloud config set project PROJECT_ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+gcloud artifacts repositories create rank-america --repository-format=docker --location=us-central1
+
+# Let Cloud Build deploy to Cloud Run (Cloud Build runs as the Compute Engine default SA in newer projects)
+PROJECT_NUMBER=$(gcloud projects describe PROJECT_ID --format='value(projectNumber)')
+BUILD_SA=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
+gcloud projects add-iam-policy-binding PROJECT_ID --member=serviceAccount:$BUILD_SA --role=roles/run.admin
+gcloud projects add-iam-policy-binding PROJECT_ID --member=serviceAccount:$BUILD_SA --role=roles/iam.serviceAccountUser
+```
+
+Deploy:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml --substitutions=_CONTACT_EMAIL=privacy@example.org
+```
+
+Or connect the GitHub repo to a Cloud Build trigger on pushes to `main` and set the `_…` substitutions in the trigger.
+
+**Enabling signups.** Store the service-account private key in Secret Manager, grant the Cloud Run runtime service account access, then pass the spreadsheet substitutions. The key secret is only attached when `_SPREADSHEET_ID` is set.
+
+```bash
+gcloud secrets create google-private-key --data-file=key.pem   # the PEM private key from the service-account JSON
+gcloud secrets add-iam-policy-binding google-private-key \
+  --member=serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com --role=roles/secretmanager.secretAccessor
+gcloud builds submit --config cloudbuild.yaml --substitutions=\
+_CONTACT_EMAIL=privacy@example.org,_SPREADSHEET_ID=...,_SHEETS_SA_EMAIL=...@....iam.gserviceaccount.com
+```
+
+`NEXT_PUBLIC_*` values are compiled into the build (and `/privacy` is prerendered), so changing them requires a rebuild, not just a Cloud Run env change.
+
+**State detection on Cloud Run.** Cloud Run does not add IP-geolocation headers by itself, so the site will show the national hero unless it sits behind a Google Cloud external HTTPS load balancer with these custom request headers on the backend service:
+
+```bash
+gcloud compute backend-services update BACKEND_SERVICE --global \
+  --custom-request-header='X-Client-Region:{client_region}' \
+  --custom-request-header='X-Client-Subdivision:{client_region_subdivision}'
+```
+
+`src/lib/geo.ts` reads these (and still reads Vercel's headers if deployed there).
+
 ## Validate
 
 `npm run test` — checks the ranked-choice counting logic and state helpers with Node's TypeScript stripping. `npm run build` — Next.js production build (requires installing dependencies). The frontend and Google integrations still need a deployed end-to-end test after credentials are supplied.

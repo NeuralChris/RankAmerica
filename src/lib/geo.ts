@@ -6,9 +6,16 @@ import { asStateCode, type StateCode } from "./states";
  * normally returns null. Do NOT treat this as a verified mailing address.
  */
 export function getStateFromHeaders(headers: Headers): StateCode | null {
-  const country = headers.get("x-vercel-ip-country");
-  if (country !== "US") return null;
-  return asStateCode(headers.get("x-vercel-ip-country-region"));
+  // Vercel
+  const vercelCountry = headers.get("x-vercel-ip-country");
+  if (vercelCountry) return vercelCountry === "US" ? asStateCode(headers.get("x-vercel-ip-country-region")) : null;
+
+  // Google Cloud external HTTPS load balancer in front of Cloud Run, configured with
+  // custom request headers X-Client-Region: {client_region} and
+  // X-Client-Subdivision: {client_region_subdivision} (CLDR IDs like "USCA").
+  if (headers.get("x-client-region") !== "US") return null;
+  const subdivision = headers.get("x-client-subdivision")?.trim().toUpperCase();
+  return subdivision?.startsWith("US") ? asStateCode(subdivision.slice(2)) : null;
 }
 
 /** QA-only preview override, e.g. /?state=CO. Does not assert an IP location. */
