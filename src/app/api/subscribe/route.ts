@@ -5,6 +5,18 @@ import { validateSignup } from "@/lib/validate-signup";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Rejects cross-site form posts. Compares the browser's Origin host with the host the
+ * request was addressed to. request.nextUrl.origin can't be used: behind Cloud Run (or
+ * any TLS-terminating proxy) it reflects the container's internal http://0.0.0.0:8080.
+ */
+function isSameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true; // non-browser clients; JSON content type already forces a CORS preflight cross-site
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try { return Boolean(host) && new URL(origin).host === host; } catch { return false; }
+}
+
 export async function POST(request: NextRequest) {
   if (!hasSignupConfiguration()) {
     return NextResponse.json({ error: "Signups are not yet enabled." }, { status: 503 });
@@ -13,8 +25,7 @@ export async function POST(request: NextRequest) {
   if (!type.startsWith("application/json") || Number(request.headers.get("content-length") || 0) > 12000) {
     return NextResponse.json({ error: "Invalid request." }, { status: 415 });
   }
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) return NextResponse.json({ error: "Origin not allowed." }, { status: 403 });
+  if (!isSameOrigin(request)) return NextResponse.json({ error: "Origin not allowed." }, { status: 403 });
   let body: unknown;
   try {
     const raw = await request.text();
