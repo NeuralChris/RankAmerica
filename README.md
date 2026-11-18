@@ -64,6 +64,14 @@ Auth is keyless by default: the app uses Google Application Default Credentials,
 
 Hosts without Application Default Credentials can instead set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY` (a service-account key; escaped `\\n` is fine). A spreadsheet is not a mailing system—email sending and unsubscribes must be integrated separately before sending campaigns.
 
+## Email (welcome emails and unsubscribe)
+
+New signups get a welcome email sent through [Resend](https://resend.com) from `hello@rankamerica.org`. Templates live in `src/lib/email/templates.ts` (welcome + donation receipt); `npm run preview:emails` renders them to `.email-previews/` for review.
+
+- **Unsubscribe:** every email links to `/unsubscribe?token=…` (a confirm page) and carries one-click `List-Unsubscribe` headers. Unsubscribing timestamps the person's row in the **Unsubscribed (UTC)** column of their state tab. Anyone sending a newsletter from the sheet must skip rows with that column filled.
+- **Config:** `RESEND_API_KEY` and `UNSUBSCRIBE_SECRET` (both in Secret Manager as `resend-api-key` and `unsubscribe-secret`). Without them signups still save; the email is just skipped.
+- **Replies:** `hello@rankamerica.org` forwards to the organizer via ImprovMX (MX records in the `rankamerica` Cloud DNS zone), so the personal address is never shown to recipients.
+
 ## Optional PayPal donations — not activated yet
 
 Create a **hosted PayPal donation page/button**, then set `PAYPAL_DONATION_URL` to its real HTTPS URL. Until this value exists, the site displays a setup notice rather than a fake payment link. Donations take place on PayPal. **Do not claim tax deductibility** unless your organization's status actually permits it. Review campaign finance and financial disclosures before fundraising in support of ballot measures.

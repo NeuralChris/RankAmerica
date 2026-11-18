@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "setup:sheets": "node scripts/setup-state-sheets.mjs"
+    "setup:sheets": "node scripts/setup-state-sheets.mjs",
+    "preview:emails": "node --experimental-strip-types scripts/preview-emails.mjs"
   },
   "dependencies": {
     "googleapis": "^150.0.0",

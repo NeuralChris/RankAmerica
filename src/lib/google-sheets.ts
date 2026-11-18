@@ -1,9 +1,9 @@
 import "server-only";
 import { google, type sheets_v4 } from "googleapis";
 import type { Signup } from "./validate-signup";
-import { STATES, STATE_CODES } from "./states";
+import { STATES, STATE_CODES, type StateCode } from "./states";
 
-export const SIGNUP_HEADERS = ["Signed Up (UTC)", "Name", "Email", "Address", "Phone", "State", "Consent", "Source"];
+export const SIGNUP_HEADERS = ["Signed Up (UTC)", "Name", "Email", "Address", "Phone", "State", "Consent", "Source", "Unsubscribed (UTC)"];
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
 /** Signups are enabled once a target spreadsheet is configured. */
@@ -38,7 +38,7 @@ async function addStateTab(sheets: sheets_v4.Sheets, spreadsheetId: string, titl
     if (!String((error as Error)?.message).includes("already exists")) throw error;
     return; // created concurrently; it already has headers
   }
-  await sheets.spreadsheets.values.update({ spreadsheetId, range: `'${title}'!A1:H1`, valueInputOption: "RAW", requestBody: { values: [SIGNUP_HEADERS] } });
+  await sheets.spreadsheets.values.update({ spreadsheetId, range: `'${title}'!A1:I1`, valueInputOption: "RAW", requestBody: { values: [SIGNUP_HEADERS] } });
 }
 
 /** Pre-creates all 50 state tabs (optional; appendSignup creates missing tabs on demand). */
@@ -58,11 +58,11 @@ export async function appendSignup(row: Signup) {
   const tab: string = STATES[row.state];
   const append = () => sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `'${tab}'!A:H`,
+    range: `'${tab}'!A:I`,
     // RAW stores input as plain text, so values like "=HYPERLINK(...)" are never evaluated.
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [[new Date().toISOString(), row.name, row.email, row.address, row.phone, tab, "Email updates: yes", "Rank America website"]] }
+    requestBody: { values: [[new Date().toISOString(), row.name, row.email, row.address, row.phone, tab, "Email updates: yes", "Rank America website", ""]] }
   });
   try {
     await append();
@@ -72,4 +72,28 @@ export async function appendSignup(row: Signup) {
     await addStateTab(sheets, spreadsheetId, tab);
     await append();
   }
+}
+
+/**
+ * Records an unsubscribe by timestamping column I on every row in the state's tab with
+ * this email. Returns how many rows matched (0 if the email or tab isn't there).
+ */
+export async function markUnsubscribed(email: string, state: StateCode): Promise<number> {
+  const sheets = getClient();
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID!;
+  const tab: string = STATES[state];
+  let rows: string[][];
+  try {
+    rows = (await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!C:I` })).data.values ?? [];
+  } catch (error) {
+    if (String((error as Error)?.message).includes("Unable to parse range")) return 0;
+    throw error;
+  }
+  const target = email.trim().toLowerCase();
+  const now = new Date().toISOString();
+  // Columns C..I → index 0 is Email, index 6 is Unsubscribed. Row 1 is the header.
+  const matches = rows.flatMap((r, i) => i > 0 && r[0]?.trim().toLowerCase() === target ? [{ row: i + 1, done: Boolean(r[6]) }] : []);
+  const data = matches.filter(m => !m.done).map(m => ({ range: `'${tab}'!I${m.row}`, values: [[now]] }));
+  if (data.length) await sheets.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: "RAW", data } });
+  return matches.length;
 }

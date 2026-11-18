@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendSignup, hasSignupConfiguration } from "@/lib/google-sheets";
 import { signupErrors, validateSignup } from "@/lib/validate-signup";
+import { sendWelcomeEmail } from "@/lib/email/send";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,9 +40,13 @@ export async function POST(request: NextRequest) {
   if (!signup) return NextResponse.json({ error: "Please fix the highlighted fields.", fields: signupErrors(payload) }, { status: 400 });
   try {
     await appendSignup(signup);
-    return NextResponse.json({ ok: true });
   } catch {
     // Do not log names, email addresses, phone numbers, addresses or request bodies.
     return NextResponse.json({ error: "We couldn't save your signup. Please try again later." }, { status: 503 });
   }
+  // The signup is saved; a failed welcome email shouldn't turn that into an error.
+  // Awaited (not fire-and-forget) because Cloud Run throttles CPU once the response is sent.
+  try { await sendWelcomeEmail(signup); }
+  catch (error) { console.error("Welcome email failed:", (error as Error).message); }
+  return NextResponse.json({ ok: true });
 }
