@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { STATES, type StateCode, STATE_CODES } from "@/lib/states";
+import { DonateCard, type DonationNotice } from "./DonateCard";
 import { signupErrors, type SignupErrors, type SignupField } from "@/lib/validate-signup";
 
 type SignupForm = { name: string; email: string; state: string; address: string; phone: string; consent: boolean; website: string };
@@ -14,7 +15,7 @@ const SAVE_FAILED: Alert = { kind: "error", title: "Your signup wasn’t saved."
 const OFFLINE: Alert = { kind: "error", title: "We couldn’t connect.", body: "Check your internet connection and try again." };
 const SIGNED_UP: Alert = { kind: "success", title: "You’re on the list!", body: "Thanks for joining Rank America email updates." };
 
-export function JoinSection({ initialState, signupEnabled, paypalUrl }: { initialState: StateCode | null; signupEnabled: boolean; paypalUrl: string | null }) {
+export function JoinSection({ initialState, signupEnabled, donationsEnabled, donationNotice, manageUrl }: { initialState: StateCode | null; signupEnabled: boolean; donationsEnabled: boolean; donationNotice: DonationNotice; manageUrl: string | null }) {
   const [form, setForm] = useState<SignupForm>({ ...empty, state: initialState ?? "" });
   const [sending, setSending] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
@@ -78,12 +79,7 @@ export function JoinSection({ initialState, signupEnabled, paypalUrl }: { initia
           </div>}
         </form>
       </div>
-      <div className="donation-card"><div className="form-heading"><div><span className="small-kicker">OPTIONAL SUPPORT</span><h3>Support the project</h3></div><span className="form-icon" aria-hidden="true">♡</span></div>
-        <p>Want to help support civic education and future site development? Contributions are optional and separate from signing up.</p>
-        <div className="donation-illustration" aria-hidden="true">♡<span>Every voice matters.</span></div>
-        {paypalUrl ? <a className="btn paypal-button" href={paypalUrl} target="_blank" rel="noopener noreferrer">Donate securely with PayPal ↗</a> : <div className="setup-message">Donation setup pending. The button activates once a hosted PayPal donation URL is provided.</div>}
-        <p className="donation-footnote">Payments will be processed by PayPal. Contributions are not represented as tax-deductible. Verify applicable campaign-finance rules before collecting funds for any ballot campaign.</p>
-      </div>
+      <DonateCard enabled={donationsEnabled} notice={donationNotice} manageUrl={manageUrl} />
     </div>
     <div className="join-bottom"><a href="https://www.ncsl.org/elections-and-campaigns/ranked-choice-voting" target="_blank" rel="noopener noreferrer">Explore ranked-choice voting ↗</a></div>
   </div></section>;

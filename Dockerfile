@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# All site configuration (sheet ID, contact email, PayPal URL) is read at runtime
+# All site configuration (sheet ID, email and Stripe keys) is read at runtime
 # from the Cloud Run service's environment, so the image needs no build args.
 RUN npm run build
 

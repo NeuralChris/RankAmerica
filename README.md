@@ -20,7 +20,7 @@ Open `http://localhost:3000`. On `localhost` there are no IP geolocation headers
 - All **50 states** in `src/lib/states.ts`, ready for state image assets.
 - Server-rendered state detection using `x-vercel-ip-country` and `x-vercel-ip-country-region` (Vercel host). No browser location permission needed. Unavailable/foreign/invalid state = national hero. `?state=XX` is a **preview override**, not a verified residence.
 - Signup UI, consent, optional address and phone fields, server-side `/api/subscribe`, and a one-time state-tab initialization script.
-- Optional hosted PayPal donation link (no payment information handled by this site).
+- One-time and monthly contributions through Stripe Checkout, with emailed receipts and a self-service link to change or cancel a monthly contribution (card details never touch this site).
 - Draft privacy page and health endpoint.
 
 ## Add state-specific hero images
@@ -69,12 +69,52 @@ Hosts without Application Default Credentials can instead set `GOOGLE_SERVICE_AC
 New signups get a welcome email sent through [Resend](https://resend.com) from `hello@rankamerica.org`. Templates live in `src/lib/email/templates.ts` (welcome + donation receipt); `npm run preview:emails` renders them to `.email-previews/` for review.
 
 - **Unsubscribe:** every email links to `/unsubscribe?token=…` (a confirm page) and carries one-click `List-Unsubscribe` headers. Unsubscribing timestamps the person's row in the **Unsubscribed (UTC)** column of their state tab. Anyone sending a newsletter from the sheet must skip rows with that column filled.
-- **Config:** `RESEND_API_KEY` and `UNSUBSCRIBE_SECRET` (both in Secret Manager as `resend-api-key` and `unsubscribe-secret`). Without them signups still save; the email is just skipped.
-- **Replies:** `hello@rankamerica.org` forwards to the organizer via ImprovMX (MX records in the `rankamerica` Cloud DNS zone), so the personal address is never shown to recipients.
+- **Config:** `RESEND_API_KEY` (a Resend *sending-only* key restricted to `rankamerica.org`) and `UNSUBSCRIBE_SECRET`, stored in Secret Manager as `resend-api-key` and `unsubscribe-secret` and attached to Cloud Run. `rankamerica.org` is verified in Resend via DKIM (`resend._domainkey`), SPF/bounce records on `send.` and `rsend.`, and a monitoring-only DMARC record (`_dmarc`, `p=none`), all in the `rankamerica` Cloud DNS zone. Without them signups still save; the email is just skipped. In local dev without `RESEND_API_KEY`, donation receipts are written to `.email-previews/` instead of being sent.
+- **Replies:** `hello@rankamerica.org` forwards to the organizer through ImprovMX (root MX `mx1`/`mx2.improvmx.com` and SPF `v=spf1 include:spf.improvmx.com ~all` in the `rankamerica` Cloud DNS zone). The personal address lives only in ImprovMX, never on the site or in this repo. Resend's records are on subdomains and don't conflict.
 
-## Optional PayPal donations — not activated yet
+## Donations (Stripe)
 
-Create a **hosted PayPal donation page/button**, then set `PAYPAL_DONATION_URL` to its real HTTPS URL. Until this value exists, the site displays a setup notice rather than a fake payment link. Donations take place on PayPal. **Do not claim tax deductibility** unless your organization's status actually permits it. Review campaign finance and financial disclosures before fundraising in support of ballot measures.
+The "Support the project" card offers one-time or monthly contributions ($5–$10,000). It sends the visitor to **Stripe Checkout**, Stripe's hosted payment page, so no card data reaches this site. The card shows a setup notice until both Stripe values below are set.
+
+- **`/api/donate`** creates a Checkout session (`mode: payment` for one-time, `mode: subscription` with an inline monthly price for monthly). Billing address is required. Checkout returns donors to `/?donation=thanks`.
+- **`/api/stripe/webhook`** verifies the Stripe signature and sends the receipt email (`donationReceiptEmail`) through Resend. One-time receipts come from `checkout.session.completed` / `checkout.session.async_payment_succeeded`. Monthly receipts, including the first, come from `invoice.paid`. Each send uses the session or invoice ID as a Resend idempotency key, so Stripe's retries can't double-send. Disputes, refunds, early fraud warnings and failed delayed payments are only logged (IDs only), so handle them in the Stripe Dashboard.
+- **`/api/donate/manage?token=…`** is the "Manage contribution" link in monthly receipts. The token is the Stripe customer ID signed with `UNSUBSCRIBE_SECRET` (domain-separated from unsubscribe tokens). Each click opens a fresh Stripe Customer Portal session. If the link is bad, or the portal call fails, donors are sent to `STRIPE_PORTAL_LOGIN_URL`, Stripe's email-code login page. That URL is public and set as a plain Cloud Run env var. It also appears under the donate card as "Manage your contribution".
+- Stripe is the record of contributions. Donors are **not** added to the signup sheet or email list.
+
+### One-time Stripe setup
+
+Use the Rank America Stripe account. Build and test in a [sandbox](https://docs.stripe.com/sandboxes) first, then repeat in live mode.
+
+1. **Business details:** set the public business name to *Rank America*, the statement descriptor to `RANKAMERICA.ORG` (the receipt shows it), and support email `hello@rankamerica.org`.
+2. **Emails:** under Settings → Customer emails, turn **off** Stripe's own "Successful payments" receipts (the site sends its own). Under Billing → Revenue recovery, turn **on** emails for failed card payments and expiring cards, plus Smart Retries.
+3. **Customer portal** (Settings → Billing → Customer portal): activate it. Allow updating payment methods and cancelling subscriptions. Set the business name, privacy policy link (`https://rankamerica.org/privacy`) and default return URL (`https://rankamerica.org/#get-involved`).
+4. **Restricted API key** (Developers → API keys → Create restricted key). Grant **Write** on Checkout Sessions and Customer portal, and **Read** on Customers, PaymentIntents, Charges, Invoices, Subscriptions and PaymentMethods. Leave everything else at None. Stripe returns a clear permission error if one is missing.
+5. **Webhook endpoint** (Developers → Webhooks → Add destination): URL `https://rankamerica.org/api/stripe/webhook`, events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `invoice.paid`, `charge.dispute.created`, `charge.refunded`, `radar.early_fraud_warning.created`. Copy its signing secret (`whsec_…`).
+6. **Store the secrets and attach them to Cloud Run:**
+
+   ```bash
+   printf %s 'rk_live_…' | gcloud secrets create stripe-secret-key --data-file=- --project ranked-choice-515101
+   printf %s 'whsec_…'   | gcloud secrets create stripe-webhook-secret --data-file=- --project ranked-choice-515101
+   for s in stripe-secret-key stripe-webhook-secret; do
+     gcloud secrets add-iam-policy-binding $s --project ranked-choice-515101 \
+       --member=serviceAccount:rank-america-web@ranked-choice-515101.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor
+   done
+   gcloud run services update rankamerica-git --project ranked-choice-515101 --region us-central1 \
+     --update-secrets=STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest
+   ```
+
+### Local testing
+
+Put the sandbox's restricted key in `.env.local` as `STRIPE_SECRET_KEY`, and set `SITE_URL=http://localhost:3000` so Checkout returns to your dev server. Then forward events with the Stripe CLI, authenticated as the Rank America sandbox (`export STRIPE_API_KEY=sk_test_…` so it never uses another account's login) and paste the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET`:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,invoice.paid,charge.dispute.created,charge.refunded,radar.early_fraud_warning.created
+```
+
+Pay with test card `4242 4242 4242 4242` (any future date, any CVC). Without `RESEND_API_KEY` locally, receipts land in `.email-previews/receipt-*.html`. Check one-time and monthly receipts, the "Manage contribution" link, and a renewal (`stripe trigger invoice.paid` is not enough here; advance a [test clock](https://docs.stripe.com/billing/testing/test-clocks) instead).
+
+**Before going live:** **Do not claim tax deductibility.** Review campaign-finance and disclosure rules for anything that supports a ballot measure. Some require collecting employer and occupation above a threshold (Checkout `custom_fields` can add those). Stripe Tax is not enabled because contributions aren't taxable sales. Revisit that if you ever sell merchandise.
 
 ## Deploy to Google Cloud Run
 
@@ -85,7 +125,7 @@ Deploys only swap the image, so configuration lives on the service and survives 
 ```bash
 gcloud run services update rankamerica-git --project ranked-choice-515101 --region us-central1 \
   --service-account=rank-america-web@ranked-choice-515101.iam.gserviceaccount.com \
-  --update-env-vars=GOOGLE_SPREADSHEET_ID=...   # PAYPAL_DONATION_URL=... when ready
+  --update-env-vars=GOOGLE_SPREADSHEET_ID=...
 ```
 
 The runtime service account `rank-america-web` has no project roles; its only access is Editor on the signup spreadsheet. The trigger's build account (`1021652958246-compute@developer.gserviceaccount.com`) has `roles/iam.serviceAccountUser` on it so deploys can keep using it.
@@ -112,12 +152,17 @@ src/app/layout.tsx               global layout and metadata
 src/app/globals.css              original site styling + form styles
 src/app/api/subscribe/route.ts   validated signup API (disabled until configured)
 src/app/api/health/route.ts      deployment health endpoint
+src/app/api/donate/route.ts      creates Stripe Checkout sessions
+src/app/api/donate/manage/       signed link → Stripe Customer Portal
+src/app/api/stripe/webhook/      verified Stripe events → receipt emails
 src/app/privacy/page.tsx         prelaunch privacy draft
 src/components/*                 React sections, ballot demo, forms
 src/lib/states.ts                50-state map, hero assets, fallback
 src/lib/geo.ts                   hosting header parsing + preview override
 src/lib/rcv.ts                   pure ranked-choice simulation
 src/lib/google-sheets.ts         server-only Google Sheets append/init
+src/lib/stripe.ts                server-only Stripe client + config check
+src/lib/donations.ts             shared amount/frequency validation
 scripts/setup-state-sheets.mjs   one-time 50-tab creation
 public/assets/*                 preserved logo, hero, icons, brush strokes
 public/images/states/CO.webp    Colorado hero slot
@@ -127,6 +172,5 @@ public/images/hero-default.webp national fallback placeholder
 ### Security / operational notes
 
 - Keep the Sheet and Google credentials private; the endpoint only runs server-side.
-- This is a structured **development foundation**, not yet a production-ready supporter database or donation service.
 - Donors should not be implicitly subscribed to email lists.
 - A phone/address field is intentionally optional to minimize personal data collection.

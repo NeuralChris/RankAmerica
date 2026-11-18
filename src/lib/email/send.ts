@@ -1,7 +1,7 @@
 import "server-only";
 import { STATES } from "../states";
 import type { Signup } from "../validate-signup";
-import { welcomeEmail, type Email } from "./templates";
+import { donationReceiptEmail, welcomeEmail, type Donation, type Email } from "./templates";
 import { createUnsubscribeToken } from "./unsubscribe-token";
 
 /** Public site origin used for links and images in emails. */
@@ -13,10 +13,15 @@ export function hasEmailConfiguration(): boolean {
 }
 
 /** Sends through Resend's REST API (https://resend.com/docs/api-reference/emails/send-email). */
-async function send(to: string, email: Email, headers?: Record<string, string>) {
+async function send(to: string, email: Email, headers?: Record<string, string>, idempotencyKey?: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+      // Resend drops a repeat send with the same key (24h), so webhook retries can't double-send.
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: JSON.stringify({
       from: process.env.EMAIL_FROM ?? "Rank America <hello@rankamerica.org>",
       to: [to],
@@ -46,4 +51,28 @@ export async function sendWelcomeEmail(signup: Signup) {
     "List-Unsubscribe": `<${site}/api/unsubscribe?token=${token}>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
   });
+}
+
+/**
+ * Donation receipt. A send failure throws so the Stripe webhook returns an error and Stripe retries;
+ * idempotencyKey (the session or invoice ID) keeps those retries from sending it twice.
+ */
+export async function sendDonationReceipt(to: string, donation: Donation, idempotencyKey: string) {
+  const email = donationReceiptEmail({ ...donation, siteUrl: siteUrl() });
+  if (!process.env.RESEND_API_KEY) {
+    if (process.env.NODE_ENV === "development") return saveLocally(idempotencyKey, email);
+    console.warn("Donation receipt skipped: RESEND_API_KEY is not configured.");
+    return;
+  }
+  await send(to, email, undefined, idempotencyKey);
+}
+
+/** Dev only (no Resend key): writes the email to .email-previews/ so local Stripe tests can be checked. */
+async function saveLocally(name: string, email: Email) {
+  const { mkdir, writeFile } = await import("node:fs/promises");
+  const dir = `${process.cwd()}/.email-previews`;
+  await mkdir(dir, { recursive: true });
+  await writeFile(`${dir}/${name}.html`, email.html);
+  await writeFile(`${dir}/${name}.txt`, `Subject: ${email.subject}\n\n${email.text}`);
+  console.log(`Dev: email saved to .email-previews/${name}.html (RESEND_API_KEY not set)`);
 }
