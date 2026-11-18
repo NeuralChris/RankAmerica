@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 92" fill="none" aria-hidden="true">
+<defs><linearGradient id="snow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#DCE9F5"/></linearGradient><linearGradient id="sun" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFE287"/><stop offset="1" stop-color="#FFB900"/></linearGradient></defs>
+<path d="M5 76L51 16L73 43L90 24L143 78L123 71L88 39L73 58L52 30L25 70Z" fill="url(#snow)"/>
+<path d="M54 79L98 30L116 48L132 37L175 80L151 70L133 52L116 65L99 48L75 70Z" fill="url(#sun)"/>
+<path d="M54 79L98 30L116 48L108 47L98 42L75 72Z" fill="#D28B0D" opacity=".24"/>
+<path d="M26 70L51 16L73 43L61 35L51 28L40 53Z" fill="#DAE5F2" opacity=".3"/>
+</svg>

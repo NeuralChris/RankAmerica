@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none" aria-hidden="true">
+<defs><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#F1F4F8"/></linearGradient><filter id="s"><feDropShadow dx="1" dy="5" stdDeviation="3" flood-color="#152842" flood-opacity=".22"/></filter></defs>
+<g filter="url(#s)" stroke="#142E50" stroke-width="5">
+<rect x="20" y="17" width="120" height="36" rx="9" fill="url(#paper)"/>
+<rect x="20" y="61" width="120" height="36" rx="9" fill="url(#paper)"/>
+<rect x="20" y="105" width="120" height="36" rx="9" fill="url(#paper)"/>
+</g>
+<g font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="900" fill="#132C4D"><text x="34" y="45">1</text><text x="34" y="89">2</text><text x="34" y="133">3</text></g>
+<g fill="#132C4D"><circle cx="112" cy="30" r="9"/><path d="M91 48Q93 36 112 36Q130 36 133 48Z"/><circle cx="112" cy="74" r="9"/><path d="M91 92Q93 80 112 80Q130 80 133 92Z"/><circle cx="112" cy="118" r="9"/><path d="M91 136Q93 124 112 124Q130 124 133 136Z"/></g>
+<g stroke="#E8B95E" stroke-width="2" opacity=".6"><path d="M64 52H132"/><path d="M64 96H132"/></g>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none" aria-hidden="true">
+<defs><linearGradient id="cup" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#FFD86D"/><stop offset=".43" stop-color="#FFEDB3"/><stop offset=".6" stop-color="#FFC242"/><stop offset="1" stop-color="#E79D15"/></linearGradient><linearGradient id="base" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFECA5"/><stop offset="1" stop-color="#EBAE28"/></linearGradient><filter id="d"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#112C4B" flood-opacity=".25"/></filter></defs>
+<g filter="url(#d)" stroke="#132F50" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+<path d="M48 31H22V57Q22 81 54 86M112 31H138V57Q138 81 106 86" fill="none"/>
+<path d="M44 20H116L111 68Q108 99 80 104Q52 99 49 68Z" fill="url(#cup)"/>
+<path d="M80 104V126"/><path d="M57 126H103V139H57Z" fill="url(#base)"/><path d="M48 139H112V146H48Z" fill="#D68D0D"/>
+</g><path d="M65 33L63 68Q63 81 74 87" stroke="#FFF9DE" stroke-width="6" stroke-linecap="round" opacity=".9"/><path d="M105 35L102 65" stroke="#C7811F" stroke-width="3" opacity=".36"/>
+</svg>
