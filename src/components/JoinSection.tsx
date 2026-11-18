@@ -57,7 +57,7 @@ export function JoinSection({ initialState, signupEnabled, donationsEnabled, don
   return <section className="join join-with-form" id="get-involved"><div className="container">
     <div className="join-intro"><div className="mini-eyebrow">Be part of the conversation</div><h2>Join the Movement.</h2><p>Get occasional updates about ranked-choice voting, education, and reform efforts around the country.</p></div>
     <div className="join-panels">
-      <div className="signup-card"><div className="form-heading"><div><span className="small-kicker">STAY INFORMED</span><h3>Get email updates</h3></div><span className="form-icon" aria-hidden="true">✉</span></div>
+      <div className="signup-card"><div className="form-heading"><div><span className="small-kicker">STAY INFORMED</span><h3>Get email updates</h3></div><span className="form-icon" aria-hidden="true"><img src="/assets/icon-envelope.svg" alt="" width={44} height={44} /></span></div>
         <p>Join the Rank America email list. State selection helps us organize local updates.</p>
         {!signupEnabled && <p className="setup-message" role="status">Signup preview: submissions are disabled until the Google Sheet connection is configured.</p>}
         <form onSubmit={submit} noValidate>
@@ -81,6 +81,5 @@ export function JoinSection({ initialState, signupEnabled, donationsEnabled, don
       </div>
       <DonateCard enabled={donationsEnabled} notice={donationNotice} manageUrl={manageUrl} />
     </div>
-    <div className="join-bottom"><a href="https://www.ncsl.org/elections-and-campaigns/ranked-choice-voting" target="_blank" rel="noopener noreferrer">Explore ranked-choice voting ↗</a></div>
   </div></section>;
 }

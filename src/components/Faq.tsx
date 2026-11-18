@@ -9,7 +9,7 @@ const entries = [
 export function Faq() {
   const [open, setOpen] = useState<number | null>(null);
   return <section className="faq" id="faq"><div className="container faq-inner">
-    <div><div className="mini-eyebrow" style={{color:"#ef5a52"}}>Quick answers</div><h2>Questions worth asking.</h2><p>Understanding the tradeoffs is part of understanding the reform.</p></div>
+    <div><div className="mini-eyebrow" style={{color:"#ef5a52"}}>Quick answers</div><h2>Questions worth asking.</h2><p>Understanding the tradeoffs is part of understanding the reform.</p><a className="faq-more" href="https://www.ncsl.org/elections-and-campaigns/ranked-choice-voting" target="_blank" rel="noopener noreferrer">Where it’s used, state by state (NCSL) ↗</a></div>
     <div>{entries.map((entry, i) => <div className={`question ${open === i ? "open" : ""}`} key={entry.question}>
       <button type="button" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>{entry.question}<span>{open === i ? "−" : "+"}</span></button><div className="answer">{entry.answer}</div>
     </div>)}</div>

@@ -37,7 +37,7 @@ export function DonateCard({ enabled, notice, manageUrl }: { enabled: boolean; n
     setSending(false);
   }
 
-  return <div className="donation-card"><div className="form-heading"><div><span className="small-kicker">OPTIONAL SUPPORT</span><h3>Support the project</h3></div><span className="form-icon" aria-hidden="true">♡</span></div>
+  return <div className="donation-card"><div className="form-heading"><div><span className="small-kicker">OPTIONAL SUPPORT</span><h3>Support the project</h3></div><span className="form-icon heart" aria-hidden="true"><img src="/assets/icon-heart.svg" alt="" width={44} height={44} /></span></div>
     <p>Want to help support civic education and future site development? Contributions are optional and separate from signing up.</p>
     {shown && <div className={`form-alert ${shown.kind}`} role={shown.kind === "error" ? "alert" : "status"}>
       <span className="alert-icon" aria-hidden="true">{shown.kind === "error" ? "!" : "✓"}</span>

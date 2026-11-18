@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none" aria-hidden="true">
+<defs><linearGradient id="env" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#D1DAE7"/></linearGradient><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#FCE6DF"/></linearGradient><filter id="shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="3" flood-color="#5B6076" flood-opacity=".2"/></filter></defs>
+<g filter="url(#shadow)" stroke="#132C4D" stroke-linejoin="round" stroke-linecap="round">
+<path d="M22 68L80 30L138 68V128Q138 136 130 136H30Q22 136 22 128Z" fill="#E9EEF5" stroke-width="6"/>
+<g transform="rotate(-4 80 70)">
+<rect x="42" y="22" width="76" height="86" rx="6" fill="url(#card)" stroke-width="6"/>
+<path d="M56 42L62 48L73 36" stroke="#F35051" stroke-width="7"/>
+<path d="M82 43H104M58 62H64M82 62H104M58 80H64M82 80H98" stroke="#9AAABD" stroke-width="5"/>
+</g>
+<path d="M22 68L80 106L138 68V128Q138 136 130 136H30Q22 136 22 128Z" fill="url(#env)" stroke-width="6"/>
+<path d="M26 132L68 98M134 132L92 98" stroke-width="5"/>
+</g></svg>
