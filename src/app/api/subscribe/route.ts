@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendSignup, hasSignupConfiguration } from "@/lib/google-sheets";
-import { validateSignup } from "@/lib/validate-signup";
+import { signupErrors, validateSignup } from "@/lib/validate-signup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const payload = body as Record<string, unknown>;
   if (payload.website) return NextResponse.json({ ok: true }); // hidden honeypot
   const signup = validateSignup(payload);
-  if (!signup) return NextResponse.json({ error: "Please provide a name, valid email, state, and consent." }, { status: 400 });
+  if (!signup) return NextResponse.json({ error: "Please fix the highlighted fields.", fields: signupErrors(payload) }, { status: 400 });
   try {
     await appendSignup(signup);
     return NextResponse.json({ ok: true });
