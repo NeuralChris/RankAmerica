@@ -52,7 +52,8 @@ export async function prepareStateSheets() {
   return missing.length;
 }
 
-export async function appendSignup(row: Signup) {
+/** source fills the Source column, e.g. "Rank America website (poll)" for opt-ins from the poll form. */
+export async function appendSignup(row: Signup, source = "Rank America website") {
   const sheets = getClient();
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID!;
   const tab: string = STATES[row.state];
@@ -62,7 +63,7 @@ export async function appendSignup(row: Signup) {
     // RAW stores input as plain text, so values like "=HYPERLINK(...)" are never evaluated.
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [[new Date().toISOString(), row.name, row.email, row.address, row.phone, tab, "Email updates: yes", "Rank America website", ""]] }
+    requestBody: { values: [[new Date().toISOString(), row.name, row.email, row.address, row.phone, tab, "Email updates: yes", source, ""]] }
   });
   try {
     await append();

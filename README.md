@@ -116,6 +116,64 @@ Pay with test card `4242 4242 4242 4242` (any future date, any CVC). Without `RE
 
 **Before going live:** **Do not claim tax deductibility.** Review campaign-finance and disclosure rules for anything that supports a ballot measure. Some require collecting employer and occupation above a threshold (Checkout `custom_fields` can add those). Stripe Tax is not enabled because contributions aren't taxable sales. Revisit that if you ever sell merchandise.
 
+## Ranked-choice polls
+
+Anyone can create a poll at `/polls/new`: a question, 2–10 options, an end time (1 hour to 90 days), whether results are **live** or **hidden until voting ends**, and their email, plus an optional newsletter opt-in. Voters rank as many options as they like at `/p/<id>`. When voting ends, the creator (and any voter who asked) gets the winner by email, with a link to `/p/<id>/results`. That page replays the count with the same animation as the homepage demo.
+
+**Flow.**
+1. `POST /api/polls` stores a *pending* poll and emails the creator a private manage link (`/p/<id>/manage?key=…`). Only the key's SHA-256 is stored.
+2. The creator clicks **Publish** on that page. Nothing goes live until the creator's email is proven, so the API never returns a poll link.
+3. Votes go to `POST /api/polls/<id>/vote`.
+4. The creator can close early or delete from the manage page.
+
+**Counting** (`src/lib/polls/count.ts`) is instant runoff with partial rankings:
+- Ballots whose choices are all eliminated are exhausted.
+- A winner needs over half the ballots still active.
+- A tie for last is broken by the earlier round's counts, then by a lot seeded with the poll ID, so recounts are always identical.
+
+**One ballot per browser.**
+- The `ra_voter` cookie holds a random ID. The ballot's document ID is a keyed hash of poll + voter ID, so a second ballot from the same browser is rejected inside the same Firestore transaction that updates the tally.
+- Each IP is also capped at 25 ballots per poll, and each IP can create 10 polls per day.
+- IPs and voter IDs are stored only as keyed hashes (HMAC with `UNSUBSCRIBE_SECRET` and a purpose prefix).
+- A determined person can vote again from a private window. That's acceptable for casual polls.
+
+**Storage: Firestore** (the `(default)` database, `us-central1`, project `ranked-choice-515101`). The runtime account `rank-america-web` has `roles/datastore.user`.
+
+| Path | Holds |
+|---|---|
+| `polls/{id}` | question, options (IDs `a`–`j`), end time, visibility, creator email, key hash, live `tally` (`{"cab": 3}` = 3 ballots ranking c, a, b), final `result` |
+| `polls/{id}/ballots/{ballotId}` | ranking key; the voter's email only if they asked for the result (erased after the results email) |
+| `polls/{id}/limits/{ipHash}` | ballots per IP for this poll |
+| `ratelimits/{key}` | fixed-window counters (poll creation, reports) |
+
+Every document has an `expireAt` field, and a **Firestore TTL policy** deletes documents after it:
+- **Pending polls:** 48 hours.
+- **Everything else:** a year after voting ends.
+
+A composite index on `polls (status, closesAt)` serves the closing job. Both were created with `gcloud firestore indexes composite create` / `gcloud firestore fields ttls update`.
+
+**Closing job.** Cloud Scheduler job `close-polls` calls `POST /api/polls/cron` every 15 minutes with a Google-signed OIDC token for `rank-america-web`. The route verifies the token's audience and email, so no shared secret is involved. Each run:
+1. Closes polls past their end time and stores the result.
+2. Sends any results emails still owed, then erases the voter emails.
+
+Each email uses a Resend idempotency key, so retries never double-send.
+
+**Moderation.** Each poll page has **Report this poll**, which emails `hello@rankamerica.org` with a link to the poll's Firestore document. To take a poll down, set its `status` to `removed`, or delete the document.
+
+**Short share links.** Set `SHARE_BASE_URL=https://rankedchoice.vote` on Cloud Run once that domain is mapped to the service. `src/proxy.ts` redirects `rankedchoice.vote/<id>` to `/p/<id>`, and the bare domain to the homepage. Until then, share links use `rankamerica.org/p/<id>`.
+
+**Local development.**
+- **In-memory store:** `POLLS_STORE=memory npm run dev`. No cloud access is needed, and data is lost on restart.
+- **Against Firestore:** use the separate `polls-dev` database, never production:
+
+  ```bash
+  FIRESTORE_DATABASE=polls-dev FIRESTORE_DEV_ACCESS_TOKEN=$(gcloud auth print-access-token --account=YOU@example.com) npm run dev
+  ```
+
+  The token lasts an hour and is ignored outside `next dev`.
+
+Without `RESEND_API_KEY`, poll emails are saved to `.email-previews/`. Trigger the closing job locally with `curl -X POST localhost:3000/api/polls/cron`, which skips the token check in development.
+
 ## Deploy to Google Cloud Run
 
 Production runs in the **Ranked Choice** Google Cloud project (`ranked-choice-515101`) as the Cloud Run service `rankamerica-git` (us-central1). A Cloud Build trigger created by Cloud Run's "continuous deployment" setup builds `Dockerfile` on every push to `main` of `NeuralChris/RankAmerica` and rolls the new image out. The `Dockerfile` produces a slim Next.js standalone image listening on `$PORT` (8080).
@@ -155,6 +213,9 @@ src/app/api/health/route.ts      deployment health endpoint
 src/app/api/donate/route.ts      creates Stripe Checkout sessions
 src/app/api/donate/manage/       signed link → Stripe Customer Portal
 src/app/api/stripe/webhook/      verified Stripe events → receipt emails
+src/app/api/polls/               create, vote, manage, report, scheduled closing
+src/app/polls/new, src/app/p/    poll creation, voting, results, manage pages
+src/proxy.ts                     rankedchoice.vote short-link redirects
 src/app/privacy/page.tsx         prelaunch privacy draft
 src/components/*                 React sections, ballot demo, forms
 src/lib/states.ts                50-state map, hero assets, fallback
@@ -163,6 +224,7 @@ src/lib/rcv.ts                   pure ranked-choice simulation
 src/lib/google-sheets.ts         server-only Google Sheets append/init
 src/lib/stripe.ts                server-only Stripe client + config check
 src/lib/donations.ts             shared amount/frequency validation
+src/lib/polls/                   poll model, IRV count, Firestore + in-memory stores, service
 scripts/setup-state-sheets.mjs   one-time 50-tab creation
 public/assets/*                 preserved logo, hero, icons, brush strokes
 public/images/states/CO.webp    Colorado hero slot

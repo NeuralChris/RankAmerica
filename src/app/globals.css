@@ -99,3 +99,77 @@
 .donate-manage a{color:#163e74;text-decoration:underline;text-underline-offset:3px}
 @media(max-width:465px){.form-icon{flex-basis:52px;width:52px;height:52px}.form-icon img{width:36px;height:36px}}
 .faq-more{display:inline-block;margin-top:6px;font-size:14px;font-weight:900;color:#163e74;text-decoration:underline;text-underline-offset:4px}.faq-more:hover{color:#ef5a52}
+/* ---------- Ranked-choice polls ---------- */
+.polls-cta{background:#fffdfa;padding:8px 0 46px}
+.polls-cta-inner{width:min(1040px,calc(100% - 34px));margin:0 auto;display:flex;align-items:center;gap:24px;background:linear-gradient(120deg,#0c213b,#183a63);color:#fff;border-radius:18px;padding:24px 30px;box-shadow:0 14px 40px #0a203b33}
+.polls-cta-inner img{flex:0 0 84px;background:#fff1df;border-radius:50%;padding:10px}
+.polls-cta-text{flex:1;min-width:0}
+.polls-cta h2{font-size:clamp(24px,2.6vw,32px);margin:0 0 6px;color:#fff}
+.polls-cta p{margin:0;color:#c9d4e3;font-size:15px;line-height:1.45}
+.polls-cta .btn{flex:0 0 auto}
+@media(max-width:760px){.polls-cta-inner{flex-direction:column;text-align:center;padding:24px 20px}.polls-cta .btn{width:100%}}
+
+.poll-page{background:#fdfaf6;min-height:calc(100vh - 140px);padding:44px 0 70px}
+.poll-wrap{width:min(720px,calc(100% - 32px));margin:0 auto}
+.poll-eyebrow{text-transform:uppercase;letter-spacing:.1em;font-weight:900;font-size:13px;color:#cc5d51;margin-bottom:8px}
+.poll-title{font-size:clamp(30px,5vw,46px);line-height:1.08;max-width:none;text-shadow:none;margin:0 0 12px;overflow-wrap:anywhere}
+.poll-intro p{color:#40516a;font-size:16px;line-height:1.55;margin:0 0 22px}
+.poll-page .panel{padding:22px 24px;margin-bottom:16px}
+.poll-page .panel-sub{font-size:14px;line-height:1.4}
+.poll-page label{display:block;font-weight:900;font-size:13px;color:#283c55;margin:16px 0 6px}
+.poll-page input:not([type=checkbox]):not([type=radio]),.poll-page select{width:100%;border:1px solid #cbd4e0;border-radius:9px;background:#fff;color:#122944;padding:11px 12px;font-size:15px;outline:none;font-family:inherit}
+.poll-page input:focus,.poll-page select:focus{border-color:#ed665a;box-shadow:0 0 0 3px #fda8a240}
+.poll-page fieldset{border:0;padding:0;margin:18px 0 0;min-width:0}
+.poll-page legend{font-weight:900;font-size:13px;color:#283c55;margin-bottom:6px;padding:0}
+.poll-page legend small,.poll-page label small{font-weight:700;color:#6b7890}
+.poll-page .field-error{display:flex;align-items:center;gap:6px;margin:6px 0 0;color:#b3261e;font-size:13px;font-weight:700}
+.poll-hint{font-size:12px;color:#6b7890;font-weight:600;margin:6px 0 0;line-height:1.45}
+.poll-center{text-align:center;margin-top:14px}
+.poll-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.poll-option-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.poll-option-num{flex:0 0 26px;height:26px;border-radius:50%;background:#e7e9f1;display:grid;place-items:center;font-size:13px;font-weight:900;color:#203858}
+.poll-remove,.poll-add-option,.poll-secondary,.poll-danger,.poll-report button{font-family:inherit;cursor:pointer}
+.poll-remove{flex:0 0 34px;height:34px;border:1px solid #cbd4e0;background:#fff;border-radius:8px;color:#6b7890;font-weight:900}
+.poll-add-option{border:1.5px dashed #c9b597;background:transparent;border-radius:9px;padding:9px 14px;font-weight:900;color:#7a5a2a;font-size:14px;width:100%}
+.poll-visibility label{display:flex;gap:10px;align-items:flex-start;border:1.5px solid #e2d6c4;border-radius:11px;padding:12px 14px;margin:0 0 8px;cursor:pointer;background:#fffaf3}
+.poll-visibility label.selected{border-color:#ea3f43;background:#fff;box-shadow:0 0 0 3px #fda8a230}
+.poll-visibility input{margin-top:3px}
+.poll-visibility strong{display:block;font-size:14px;color:#101e36}
+.poll-visibility small{display:block;font-weight:600;font-size:13px;color:#52647a;margin-top:2px}
+.poll-check{display:flex!important;gap:9px;align-items:flex-start;font-weight:700!important;font-size:14px!important;color:#283c55;margin:18px 0 4px!important;cursor:pointer}
+.poll-check input{margin-top:3px;flex:0 0 16px;height:16px}
+.poll-submit{width:100%;margin-top:18px;font-size:15px}
+.poll-submit:disabled{opacity:.6;cursor:wait}
+.poll-ranked{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:7px}
+.poll-ranked .rank{min-width:42px}
+.poll-ranked .name{overflow-wrap:anywhere}
+.poll-dot{flex:0 0 12px;height:12px;border-radius:50%}
+.poll-unranked{display:flex;flex-direction:column;gap:7px}
+.poll-unranked-label{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#6b7890;margin:4px 0 2px}
+.poll-option{display:flex;align-items:center;gap:10px;width:100%;text-align:left;min-height:49px;padding:10px 12px;background:#fff;border:1.5px dashed #c5cfdd;border-radius:9px;font:inherit;font-weight:800;font-size:15px;color:#101e36;cursor:pointer;transition:border-color .15s,background .15s}
+.poll-option:hover{border-color:#ea3f43;background:#fff8f5}
+.poll-option span:nth-child(2){flex:1;overflow-wrap:anywhere}
+.poll-add{flex:0 0 26px;height:26px;border-radius:50%;background:#fde6e2;color:#d23c34;display:grid;place-items:center;font-weight:900}
+.poll-notify small{display:block;font-size:12px;color:#6b7890;margin-top:5px}
+.poll-error{margin-top:12px!important}
+.poll-done{text-align:center;padding:30px 24px!important}
+.poll-done h2{font-size:28px;margin:6px 0 8px}
+.poll-done p{color:#40516a;line-height:1.5;margin:0 auto 14px;max-width:520px}
+.poll-done-icon{width:52px;height:52px;margin:0 auto;border-radius:50%;background:#e7f5ec;color:#2a8a55;display:grid;place-items:center;font-size:24px;font-weight:900}
+.poll-done-actions{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:6px}
+.poll-link,.poll-foot a,.poll-manage-links a{color:#163e74;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.poll-muted{font-size:14px;color:#6b7890!important}
+.poll-foot{text-align:center;font-size:14px;color:#52647a;margin:18px 0 0}
+.poll-report{text-align:center;margin:10px 0 0}
+.poll-report button{background:none;border:0;color:#8a96a8;font-size:12px;text-decoration:underline;padding:4px}
+.poll-share{display:flex;gap:8px;margin:4px 0 12px}
+.poll-share input{flex:1;font-weight:700}
+.poll-share .btn{flex:0 0 auto;padding:10px 18px}
+.poll-manage-links{display:flex;gap:18px;font-size:14px;margin-bottom:16px}
+.poll-secondary{display:block;width:100%;background:#fff;border:1.5px solid #203c5b;color:#203c5b;border-radius:10px;padding:11px;font-weight:900;font-size:14px;margin-top:4px}
+.poll-danger{display:block;margin:16px auto 0;background:none;border:0;color:#b3261e;font-weight:800;font-size:13px;text-decoration:underline}
+.poll-results-panel .barrow{grid-template-columns:minmax(110px,1fr) minmax(90px,1.5fr) 74px}
+.poll-results-panel .barrow .name{overflow-wrap:anywhere}
+.poll-results-panel .round-tabs{flex-wrap:wrap}
+.poll-empty{text-align:center;color:#52647a;font-weight:700;margin:20px 0}
+@media(max-width:560px){.poll-row{grid-template-columns:1fr}.poll-page .panel{padding:18px 16px}.poll-results-panel .barrow{grid-template-columns:minmax(80px,1fr) minmax(60px,1.2fr) 66px;gap:7px}.poll-results-panel .gain-badge{right:70px}}

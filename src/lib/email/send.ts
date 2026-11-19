@@ -58,16 +58,24 @@ export async function sendWelcomeEmail(signup: Signup) {
  * idempotencyKey (the session or invoice ID) keeps those retries from sending it twice.
  */
 export async function sendDonationReceipt(to: string, donation: Donation, idempotencyKey: string) {
-  const email = donationReceiptEmail({ ...donation, siteUrl: siteUrl() });
+  await deliver(to, donationReceiptEmail({ ...donation, siteUrl: siteUrl() }), idempotencyKey);
+}
+
+/**
+ * Sends a transactional email (receipts, poll emails). A send failure throws so callers can retry;
+ * the idempotency key keeps retries from sending twice. Without RESEND_API_KEY the email is saved
+ * to .email-previews/ in development and skipped (with a warning) elsewhere.
+ */
+export async function deliver(to: string, email: Email, idempotencyKey: string) {
   if (!process.env.RESEND_API_KEY) {
-    if (process.env.NODE_ENV === "development") return saveLocally(idempotencyKey, email);
-    console.warn("Donation receipt skipped: RESEND_API_KEY is not configured.");
+    if (process.env.NODE_ENV === "development") return saveLocally(idempotencyKey.replace(/[^\w.-]/g, "_"), email);
+    console.warn(`Email skipped (${idempotencyKey.split("/")[0]}): RESEND_API_KEY is not configured.`);
     return;
   }
   await send(to, email, undefined, idempotencyKey);
 }
 
-/** Dev only (no Resend key): writes the email to .email-previews/ so local Stripe tests can be checked. */
+/** Dev only (no Resend key): writes the email to .email-previews/ so local tests can be checked. */
 async function saveLocally(name: string, email: Email) {
   const { mkdir, writeFile } = await import("node:fs/promises");
   const dir = `${process.cwd()}/.email-previews`;

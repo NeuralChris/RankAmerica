@@ -13,6 +13,8 @@
     "preview:emails": "node --experimental-strip-types scripts/preview-emails.mjs"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.4.1",
+    "google-auth-library": "^11.3.4",
     "googleapis": "^150.0.0",
     "next": "^16.0.0",
     "react": "^19.2.0",

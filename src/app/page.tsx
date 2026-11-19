@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Hero } from "@/components/Hero";
 import { Comparison } from "@/components/Comparison";
 import { BallotDemo } from "@/components/BallotDemo";
+import { PollsCta } from "@/components/PollsCta";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Faq } from "@/components/Faq";
 import { JoinSection } from "@/components/JoinSection";
@@ -26,6 +27,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <Hero state={location.state} source={location.source} />
       <Comparison />
       <BallotDemo />
+      <PollsCta />
       <HowItWorks />
       <Faq />
       <JoinSection initialState={location.state} signupEnabled={signupEnabled} donationsEnabled={hasDonationConfiguration()} donationNotice={donationNotice} manageUrl={portalLoginUrl()} />

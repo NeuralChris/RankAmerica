@@ -245,3 +245,85 @@ You’re receiving this receipt because you made a contribution at rankamerica.o
 `;
   return { subject, preheader, html: layout({ siteUrl: d.siteUrl, title: subject, preheader, body, footer }), text };
 }
+
+// ---------- polls ----------
+
+/** "December 3, 2026 at 5:00 PM EST" in the poll creator's time zone. */
+export function pollDate(isoDate: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" }).format(new Date(isoDate));
+}
+
+export function pollConfirmEmail(o: { question: string; options: string[]; closesAt: string; timeZone: string; live: boolean; manageUrl: string; siteUrl: string }): Email {
+  const subject = `Publish your poll: ${o.question}`;
+  const preheader = "One click to publish it and get your share link.";
+  const ends = pollDate(o.closesAt, o.timeZone);
+  const items = o.options.map(opt => `<li style="margin:4px 0;">${esc(opt)}</li>`).join("");
+  const body = `${eyebrow("ONE MORE STEP")}
+${h1("Publish your poll")}
+${para("Your ranked-choice poll is ready. Review it and publish it to get the link to share with voters.")}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#ffffff;border:1px solid ${C.line};border-radius:14px;font-family:${SANS};"><tr><td style="padding:20px 24px;">
+  <div style="font-family:${SERIF};font-size:20px;font-weight:700;color:${C.ink};">${esc(o.question)}</div>
+  <ul style="margin:12px 0 0;padding-left:20px;font-size:15px;line-height:1.5;color:${C.body};">${items}</ul>
+  <div style="margin-top:14px;font-size:13px;color:${C.muted};">Voting ends ${esc(ends)}. Results are ${o.live ? "visible live while voting is open" : "revealed when voting ends"}.</div>
+</td></tr></table>
+<div style="margin-top:28px;">${button("Review and publish", o.manageUrl)}</div>
+${para("Keep this email: the same link lets you close the poll early or delete it. We’ll email you the winner when voting ends.", `font-size:14px;color:${C.muted};`)}
+${para("Didn’t create this poll? Ignore this email and it will be deleted automatically within 48 hours.", `font-size:14px;color:${C.muted};`)}`;
+  const footer = footerText("You’re receiving this because someone used this address to create a poll at rankamerica.org.", [["Privacy policy", `${o.siteUrl}/privacy`], ["rankamerica.org", o.siteUrl]]);
+  const text = `Publish your poll
+
+${o.question}
+${o.options.map(opt => `- ${opt}`).join("\n")}
+
+Voting ends ${ends}. Results are ${o.live ? "visible live while voting is open" : "revealed when voting ends"}.
+
+Review and publish: ${o.manageUrl}
+
+Keep this email: the same link lets you close the poll early or delete it. We’ll email you the winner when voting ends.
+Didn’t create this poll? Ignore this email and it will be deleted automatically within 48 hours.
+`;
+  return { subject, preheader, html: layout({ siteUrl: o.siteUrl, title: subject, preheader, body, footer }), text };
+}
+
+export type PollResultsSummary = {
+  question: string;
+  winner: string | null;
+  ballots: number;
+  /** One line per round, e.g. "Round 1: Tacos 5, Pizza 4, Sushi 3. Sushi eliminated." */
+  roundLines: string[];
+  /** e.g. "6 of 10 active ballots (60%)" */
+  winningShare: string | null;
+  resultsUrl: string;
+  siteUrl: string;
+  recipient: "creator" | "voter";
+};
+
+export function pollResultsEmail(o: PollResultsSummary): Email {
+  const subject = o.winner ? `${o.winner} wins: ${o.question}` : `Poll closed: ${o.question}`;
+  const preheader = o.winner ? `The ranked-choice count is in. See how ${o.winner} won, round by round.` : "Voting has ended.";
+  const headline = o.winner ? `${o.winner} wins.` : o.ballots ? "No winner this time." : "No one voted.";
+  const rounds = o.roundLines.map((l, i) => `<tr><td style="padding:10px 0;font-size:14px;line-height:1.5;color:${C.body};${i < o.roundLines.length - 1 ? "border-bottom:1px solid #f0e8dc;" : ""}">${esc(l)}</td></tr>`).join("\n");
+  const body = `${eyebrow("POLL RESULTS")}
+${h1(headline)}
+${para(`<strong style="color:${C.ink};">${esc(o.question)}</strong>`)}
+${o.winningShare ? para(`${esc(o.winner!)} won with ${esc(o.winningShare)} after the ranked-choice count. ${o.ballots} ${o.ballots === 1 ? "ballot was" : "ballots were"} cast.`) : para(`${o.ballots} ${o.ballots === 1 ? "ballot was" : "ballots were"} cast.`)}
+${rounds ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#ffffff;border:1px solid ${C.line};border-radius:14px;font-family:${SANS};"><tr><td style="padding:14px 24px 8px;"><div style="font-size:11px;font-weight:900;letter-spacing:0.12em;color:${C.muted};">ROUND BY ROUND</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rounds}</table></td></tr></table>` : ""}
+${ctaPanel("Watch the count", "See the votes move round by round, exactly as they were counted.", "See the results", o.resultsUrl)}
+${o.recipient === "creator" ? para("Share the results link with your voters so they can watch it too.", `font-size:14px;color:${C.muted};`) : ""}
+${signoff("Thanks for ranking,")}`;
+  const footerMsg = o.recipient === "creator"
+    ? "You’re receiving this because you created this poll at rankamerica.org."
+    : "You asked to be emailed this poll’s result when you voted. This is the only email you’ll get about it, and your address has now been deleted.";
+  const footer = footerText(footerMsg, [["Privacy policy", `${o.siteUrl}/privacy`], ["rankamerica.org", o.siteUrl]]);
+  const text = `${headline}
+
+${o.question}
+${o.winningShare ? `${o.winner} won with ${o.winningShare} after the ranked-choice count. ` : ""}${o.ballots} ${o.ballots === 1 ? "ballot was" : "ballots were"} cast.
+
+${o.roundLines.length ? `ROUND BY ROUND\n${o.roundLines.join("\n")}\n\n` : ""}Watch the count: ${o.resultsUrl}
+
+--
+${footerMsg}
+`;
+  return { subject, preheader, html: layout({ siteUrl: o.siteUrl, title: subject, preheader, body, footer }), text };
+}
