@@ -1,12 +1,14 @@
 import "server-only";
-import { FieldPath, FieldValue, Firestore, Timestamp, type DocumentData, type DocumentSnapshot } from "@google-cloud/firestore";
+import { randomInt } from "node:crypto";
+import { FieldValue, Firestore, Timestamp, type DocumentData, type DocumentSnapshot } from "@google-cloud/firestore";
 import { OAuth2Client } from "google-auth-library";
 import { acceptingVotes, type Poll } from "./model";
 import { BALLOTS_PER_IP, RETENTION, type PollStore } from "./store";
 
 /**
  * Collections (all docs carry `expireAt`, which a Firestore TTL policy uses to delete them):
- *   polls/{id}                      the poll, its live tally and final result
+ *   polls/{id}                      the poll and, once closed, its final tally and result
+ *   polls/{id}/shards/{0..49}       the live tally, split across shards (see SHARDS)
  *   polls/{id}/ballots/{ballotId}   one per browser; ballotId = keyed hash of poll + voter cookie
  *   polls/{id}/limits/{ipHash}      ballots cast from one IP in this poll
  *   ratelimits/{key}                fixed-window counters (poll creation, reports)
@@ -27,6 +29,25 @@ function firestore(): Firestore {
   return (db = new Firestore(settings));
 }
 const polls = () => firestore().collection("polls");
+
+/**
+ * Each vote adds to one of SHARDS tally documents chosen at random, instead of the poll document.
+ * Firestore sustains roughly one write per second per document, so a single tally document caps a
+ * poll at ~15 votes/second; spreading writes over 50 shards lifts that well past 100. Reading the
+ * full tally means summing the shards (one query), which the results page caches.
+ */
+const SHARDS = 50;
+type Tally = { tally: Record<string, number>; ballots: number };
+/** Adds shard tallies to whatever the poll document holds (its final tally, or a pre-sharding tally). */
+function sumTally(base: { tally?: Record<string, number>; ballotCount?: number } | undefined, shards: DocumentData[]): Tally {
+  const tally: Record<string, number> = { ...(base?.tally ?? {}) };
+  let ballots = base?.ballotCount ?? 0;
+  for (const d of shards) {
+    for (const [key, n] of Object.entries((d.tally ?? {}) as Record<string, number>)) tally[key] = (tally[key] ?? 0) + n;
+    ballots += d.count ?? 0;
+  }
+  return { tally, ballots };
+}
 const ts = (iso: string) => Timestamp.fromDate(new Date(iso));
 const iso = (t: unknown) => (t instanceof Timestamp ? t.toDate() : new Date(String(t))).toISOString();
 const later = (fromMs: number, ms: number) => Timestamp.fromMillis(fromMs + ms);
@@ -71,20 +92,35 @@ export function firestoreStore(): PollStore {
         const expireAt = later(Date.parse(p.closesAt), RETENTION.afterCloseMs);
         tx.create(bRef, { key, createdAt: FieldValue.serverTimestamp(), notify: Boolean(notifyEmail), notifyEmail: notifyEmail ?? null, expireAt });
         tx.set(lRef, { count: FieldValue.increment(1), expireAt }, { merge: true });
-        tx.update(ref, new FieldPath("tally", key), FieldValue.increment(1), "ballotCount", FieldValue.increment(1));
+        // The poll document is only read here (shared lock), never written, so votes don't queue on it.
+        // Closing the poll writes it, which makes in-flight votes finish first: no ballot slips past the count.
+        const shard = ref.collection("shards").doc(String(randomInt(SHARDS)));
+        tx.set(shard, { tally: { [key]: FieldValue.increment(1) }, count: FieldValue.increment(1), expireAt }, { merge: true });
         return "ok";
       });
     },
 
     async hasVoted(pollId, ballotId) { return (await polls().doc(pollId).collection("ballots").doc(ballotId).get()).exists; },
 
+    async tally(id) {
+      const ref = polls().doc(id);
+      const [snap, shards] = await Promise.all([ref.get(), ref.collection("shards").get()]);
+      return sumTally(snap.data(), shards.docs.map(d => d.data()));
+    },
+
     async close(id, compute, opts) {
       return firestore().runTransaction(async tx => {
-        const ref = polls().doc(id), p = toPoll(await tx.get(ref));
+        const ref = polls().doc(id), snap = await tx.get(ref), p = toPoll(snap);
         if (!p || p.status !== "open" || (!opts?.force && Date.parse(p.closesAt) > Date.now())) return null;
-        const result = compute(p);
-        tx.update(ref, { status: "closed", result, notified: false, expireAt: later(Date.now(), RETENTION.afterCloseMs) });
-        return { ...p, status: "closed" as const, result, notified: false };
+        // Reading the shards inside the transaction gives a consistent final count.
+        const shards = await tx.get(ref.collection("shards"));
+        const { tally, ballots } = sumTally(snap.data(), shards.docs.map(d => d.data()));
+        const counted = { ...p, tally, ballotCount: ballots };
+        const result = compute(counted);
+        // The final tally moves onto the poll document; the shards are then redundant and deleted.
+        tx.update(ref, { status: "closed", result, tally, ballotCount: ballots, notified: false, expireAt: later(Date.now(), RETENTION.afterCloseMs) });
+        for (const d of shards.docs) tx.delete(d.ref);
+        return { ...counted, status: "closed" as const, result, notified: false };
       });
     },
 

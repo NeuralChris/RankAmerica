@@ -22,8 +22,9 @@ export default async function ManagePage({ params, searchParams }: { params: Pro
     </PollShell>;
   }
 
+  const ballots = poll.status === "open" ? (await pollStore().tally(id)).ballots : poll.ballotCount;
   return <PollShell eyebrow="Manage your poll" title={poll.question}
-    intro={<p>{poll.options.length} options · voting {poll.status === "closed" ? "ended" : "ends"} <LocalTime iso={poll.closesAt} fallbackZone={poll.timeZone} /> · results {poll.resultsVisibility === "live" ? "live" : "revealed at the end"}{poll.status !== "pending" ? ` · ${poll.ballotCount} ${poll.ballotCount === 1 ? "ballot" : "ballots"} so far` : ""}</p>}>
+    intro={<p>{poll.options.length} options · voting {poll.status === "closed" ? "ended" : "ends"} <LocalTime iso={poll.closesAt} fallbackZone={poll.timeZone} /> · results {poll.resultsVisibility === "live" ? "live" : "revealed at the end"}{poll.status !== "pending" ? ` · ${ballots} ${ballots === 1 ? "ballot" : "ballots"} so far` : ""}</p>}>
     <ManagePanel pollId={id} manageKey={key} status={poll.status} shareUrl={shareUrl(id)} resultsUrl={resultsUrl(id)} />
     <p className="poll-foot">Keep this page’s link private: anyone with it can close or delete the poll.</p>
   </PollShell>;

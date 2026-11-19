@@ -34,6 +34,23 @@ export function computeResult(poll: Pick<Poll, "id" | "options" | "tally" | "bal
   return { rounds, winner: rounds[rounds.length - 1]?.winner ?? null, ballots: poll.ballotCount, closedAt: new Date().toISOString() };
 }
 
+/**
+ * Live results for an open poll, recounted at most every LIVE_TTL_MS per server instance.
+ * A viral poll's results page can get thousands of views a minute; without this each view
+ * would read all tally shards and recount.
+ */
+const LIVE_TTL_MS = 10_000;
+const liveCache = new Map<string, { at: number; result: PollResult }>();
+export async function liveResult(poll: Poll): Promise<PollResult> {
+  const hit = liveCache.get(poll.id);
+  if (hit && Date.now() - hit.at < LIVE_TTL_MS) return hit.result;
+  const { tally, ballots } = await pollStore().tally(poll.id);
+  const result = computeResult({ ...poll, tally, ballotCount: ballots });
+  liveCache.delete(poll.id); liveCache.set(poll.id, { at: Date.now(), result }); // re-insert = most recent
+  if (liveCache.size > 500) liveCache.delete(liveCache.keys().next().value!); // drop the oldest
+  return result;
+}
+
 const pct = (n: number, of: number) => (of ? Math.round(100 * n / of) : 0);
 
 /** Plain-language round summary for emails. */

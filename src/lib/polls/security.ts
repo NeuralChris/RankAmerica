@@ -26,9 +26,15 @@ export function keyedHash(purpose: string, value: string): string {
   return createHmac("sha256", secret).update(`${purpose}:${value}`).digest("base64url").slice(0, 32);
 }
 
-/** Visitor IP as seen by Cloud Run's front end (first X-Forwarded-For hop). */
+/**
+ * Visitor IP for rate limiting. Google's front end *appends* the connecting client's address to
+ * X-Forwarded-For, so the last entry is the one we can trust; earlier entries are whatever the
+ * client sent and could be forged to dodge per-IP limits. (Behind an external HTTPS load balancer
+ * the LB adds its own address too, and the client would be second to last.)
+ */
 export function clientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const hops = request.headers.get("x-forwarded-for")?.split(",").map(s => s.trim()).filter(Boolean) ?? [];
+  return hops[hops.length - 1] || "unknown";
 }
 
 export const VOTER_COOKIE = "ra_voter";

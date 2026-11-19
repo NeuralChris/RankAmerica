@@ -132,19 +132,22 @@ Anyone can create a poll at `/polls/new`: a question, 2–10 options, an end tim
 - A tie for last is broken by the earlier round's counts, then by a lot seeded with the poll ID, so recounts are always identical.
 
 **One ballot per browser.**
-- The `ra_voter` cookie holds a random ID. The ballot's document ID is a keyed hash of poll + voter ID, so a second ballot from the same browser is rejected inside the same Firestore transaction that updates the tally.
+- The `ra_voter` cookie holds a random ID. The ballot's document ID is a keyed hash of poll + voter ID, so a second ballot from the same browser is rejected inside the same Firestore transaction that records the vote.
 - Each IP is also capped at 25 ballots per poll, and each IP can create 10 polls per day.
-- IPs and voter IDs are stored only as keyed hashes (HMAC with `UNSUBSCRIBE_SECRET` and a purpose prefix).
+- IPs and voter IDs are stored only as keyed hashes (HMAC with `UNSUBSCRIBE_SECRET` and a purpose prefix). The IP is the **last** `X-Forwarded-For` entry, the one Google's front end appends; earlier entries are client-supplied and could be forged.
 - A determined person can vote again from a private window. That's acceptable for casual polls.
 
 **Storage: Firestore** (the `(default)` database, `us-central1`, project `ranked-choice-515101`). The runtime account `rank-america-web` has `roles/datastore.user`.
 
 | Path | Holds |
 |---|---|
-| `polls/{id}` | question, options (IDs `a`–`j`), end time, visibility, creator email, key hash, live `tally` (`{"cab": 3}` = 3 ballots ranking c, a, b), final `result` |
+| `polls/{id}` | question, options (IDs `a`–`j`), end time, visibility, creator email, key hash; once closed, the final `tally` (`{"cab": 3}` = 3 ballots ranking c, a, b) and `result` |
+| `polls/{id}/shards/{0–49}` | the live tally while voting is open, split across 50 documents (deleted at close) |
 | `polls/{id}/ballots/{ballotId}` | ranking key; the voter's email only if they asked for the result (erased after the results email) |
 | `polls/{id}/limits/{ipHash}` | ballots per IP for this poll |
 | `ratelimits/{key}` | fixed-window counters (poll creation, reports) |
+
+**Scaling.** Firestore sustains about one write per second per document, so each vote adds to one of 50 randomly chosen tally shards instead of the poll document. The vote transaction only *reads* the poll document, so votes don't queue on it. Closing *writes* it, so in-flight votes finish first and every accepted ballot is in the final count. Live results sum the shards at most every 10 seconds per instance. In local load tests, 600 concurrent votes went from 16 votes/s (median 2.9 s, one aborted ballot) on a single tally document to 124 votes/s (median 0.45 s, none lost). 2,000 votes at 150 concurrent all counted, limited by the laptop dev server rather than Firestore.
 
 Every document has an `expireAt` field, and a **Firestore TTL policy** deletes documents after it:
 - **Pending polls:** 48 hours.

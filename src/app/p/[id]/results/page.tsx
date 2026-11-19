@@ -5,7 +5,7 @@ import { LocalTime } from "@/components/polls/LocalTime";
 import { PollShell } from "@/components/polls/PollShell";
 import { POLL_ID } from "@/lib/polls/http";
 import { acceptingVotes, resultsVisible } from "@/lib/polls/model";
-import { computeResult } from "@/lib/polls/service";
+import { liveResult } from "@/lib/polls/service";
 import { pollStore } from "@/lib/polls/store";
 
 export const dynamic = "force-dynamic";
@@ -37,11 +37,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
     </PollShell>;
   }
 
-  const result = poll.status === "closed" && poll.result ? poll.result : computeResult(poll);
+  const result = poll.status === "closed" && poll.result ? poll.result : await liveResult(poll);
   const winner = result.winner ? poll.options.find(o => o.id === result.winner)?.label : null;
   const live = poll.status === "open";
   return <PollShell eyebrow={live ? "Live results" : "Final results"} title={poll.question}
-    intro={<p>{live ? <>Voting is open until <LocalTime iso={poll.closesAt} fallbackZone={poll.timeZone} />. {winner ? `${winner} leads right now.` : ""} Refresh to see new ballots.</>
+    intro={<p>{live ? <>Voting is open until <LocalTime iso={poll.closesAt} fallbackZone={poll.timeZone} />. {winner ? `${winner} leads right now.` : ""} The count updates every few seconds; refresh to see new ballots.</>
       : winner ? <><strong>{winner} wins.</strong> Watch how the ranked-choice count got there.</> : result.ballots ? "No winner this time." : "No one voted in this poll."}</p>}>
     <CountAnimation options={poll.options} rounds={result.rounds} live={live} />
     {live && <p className="poll-foot"><a href={`/p/${id}`}>Haven’t voted yet? Cast your ballot →</a></p>}

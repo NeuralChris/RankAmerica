@@ -13,6 +13,8 @@ export interface PollStore {
   publish(id: string): Promise<boolean>;
   vote(input: VoteInput): Promise<VoteOutcome>;
   hasVoted(pollId: string, ballotId: string): Promise<boolean>;
+  /** Current tally and ballot count (summed across shards for an open poll). */
+  tally(id: string): Promise<{ tally: Record<string, number>; ballots: number }>;
   /**
    * Closes an open poll whose end time has passed (or any open poll when force is set),
    * storing the computed result. Returns the closed poll, or null if it isn't closable.

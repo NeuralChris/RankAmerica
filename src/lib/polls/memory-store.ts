@@ -33,6 +33,7 @@ export function memoryStore(): PollStore {
       return "ok";
     },
     async hasVoted(pollId, ballotId) { return m.ballots.get(pollId)?.has(ballotId) ?? false; },
+    async tally(id) { const p = m.polls.get(id); return { tally: { ...(p?.tally ?? {}) }, ballots: p?.ballotCount ?? 0 }; },
     async close(id, compute, opts) {
       const p = m.polls.get(id);
       if (!p || p.status !== "open" || (!opts?.force && Date.parse(p.closesAt) > Date.now())) return null;
