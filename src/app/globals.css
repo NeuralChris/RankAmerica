@@ -173,3 +173,10 @@
 .poll-results-panel .round-tabs{flex-wrap:wrap}
 .poll-empty{text-align:center;color:#52647a;font-weight:700;margin:20px 0}
 @media(max-width:560px){.poll-row{grid-template-columns:1fr}.poll-page .panel{padding:18px 16px}.poll-results-panel .barrow{grid-template-columns:minmax(80px,1fr) minmax(60px,1.2fr) 66px;gap:7px}.poll-results-panel .gain-badge{right:70px}}
+/* Ballot drag-to-reorder */
+.poll-ranked .candidate{position:relative;transition:transform .18s cubic-bezier(.2,.7,.2,1),box-shadow .15s}
+.poll-grip{flex:0 0 26px;align-self:stretch;margin:-8px 0 -8px -4px;display:grid;place-items:center;color:#7b8aa0;font-size:18px;letter-spacing:-3px;cursor:grab;touch-action:none;user-select:none}
+.poll-ranked .candidate.dragging{opacity:1;z-index:2;transition:box-shadow .15s;background:#fff;border-color:#ea3f43;box-shadow:0 10px 24px #0a203b33;cursor:grabbing}
+.poll-ranked.is-dragging{user-select:none}
+@media(pointer:fine){.poll-ranked .candidate{cursor:grab}.poll-ranked .candidate button{cursor:pointer}}
+@media(prefers-reduced-motion:reduce){.poll-ranked .candidate{transition:none}}

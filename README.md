@@ -163,7 +163,7 @@ Each email uses a Resend idempotency key, so retries never double-send.
 
 **Moderation.** Each poll page has **Report this poll**, which emails `hello@rankamerica.org` with a link to the poll's Firestore document. To take a poll down, set its `status` to `removed`, or delete the document.
 
-**Short share links.** Set `SHARE_BASE_URL=https://rankedchoice.vote` on Cloud Run once that domain is mapped to the service. `src/proxy.ts` redirects `rankedchoice.vote/<id>` to `/p/<id>`, and the bare domain to the homepage. Until then, share links use `rankamerica.org/p/<id>`.
+**Short share links.** `rankedchoice.vote` (registered at Spaceship, DNS in the `rankedchoicevote` Cloud DNS zone) is verified in Search Console and mapped to the Cloud Run service, along with `www.rankedchoice.vote`. Its zone holds the Cloud Run A/AAAA records, a `www` CNAME to `ghs.googlehosted.com`, and the `google-site-verification` TXT record, which must stay. `SHARE_BASE_URL=https://rankedchoice.vote` on Cloud Run makes share links use it. `src/proxy.ts` redirects `rankedchoice.vote/<id>` to `/p/<id>`, and the bare domain to the homepage. Until then, share links use `rankamerica.org/p/<id>`.
 
 **Local development.**
 - **In-memory store:** `POLLS_STORE=memory npm run dev`. No cloud access is needed, and data is lost on restart.
