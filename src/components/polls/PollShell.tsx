@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 
-/** Page frame for the poll pages: site header, a narrow centered column, and the footer. */
+/** Page frame for the poll pages: a narrow centered column (header and footer come from the (site) layout). */
 export function PollShell({ eyebrow, title, intro, children }: { eyebrow?: string; title: ReactNode; intro?: ReactNode; children: ReactNode }) {
   return <>
-    <SiteHeader />
     <main className="poll-page">
       <div className="poll-wrap">
         {eyebrow && <div className="poll-eyebrow">{eyebrow}</div>}
@@ -14,6 +11,5 @@ export function PollShell({ eyebrow, title, intro, children }: { eyebrow?: strin
         {children}
       </div>
     </main>
-    <SiteFooter />
   </>;
 }

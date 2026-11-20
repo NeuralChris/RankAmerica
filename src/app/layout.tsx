@@ -7,5 +7,6 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.png" }
 };
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
-  return <html lang="en"><body>{children}</body></html>;
+  // data-scroll-behavior lets Next.js turn off the CSS smooth scrolling during page changes, so a new page starts at the top.
+  return <html lang="en" data-scroll-behavior="smooth"><body>{children}</body></html>;
 }

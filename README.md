@@ -201,6 +201,8 @@ gcloud compute backend-services update BACKEND_SERVICE --global \
 
 `src/lib/geo.ts` reads these (and still reads Vercel's headers if deployed there).
 
+**Local dev tip:** if `npm run dev` keeps reloading the page, delete `.next` and restart. It happens after running `npm run build` in the same folder, because the production build output confuses the dev server's live reload.
+
 ## Validate
 
 `npm run test` — checks the ranked-choice counting logic and state helpers with Node's TypeScript stripping. `npm run build` — Next.js production build (requires installing dependencies). The frontend and Google integrations still need a deployed end-to-end test after credentials are supplied.
@@ -208,7 +210,8 @@ gcloud compute backend-services update BACKEND_SERVICE --global \
 ## Project structure
 
 ```
-src/app/page.tsx                 dynamic server-rendered homepage
+src/app/(site)/layout.tsx        header + footer for the homepage and poll pages
+src/app/(site)/page.tsx          dynamic server-rendered homepage
 src/app/layout.tsx               global layout and metadata
 src/app/globals.css              original site styling + form styles
 src/app/api/subscribe/route.ts   validated signup API (disabled until configured)
@@ -217,7 +220,7 @@ src/app/api/donate/route.ts      creates Stripe Checkout sessions
 src/app/api/donate/manage/       signed link → Stripe Customer Portal
 src/app/api/stripe/webhook/      verified Stripe events → receipt emails
 src/app/api/polls/               create, vote, manage, report, scheduled closing
-src/app/polls/new, src/app/p/    poll creation, voting, results, manage pages
+src/app/(site)/polls/new, (site)/p/  poll creation, voting, results, manage pages
 src/proxy.ts                     rankedchoice.vote short-link redirects
 src/app/privacy/page.tsx         prelaunch privacy draft
 src/components/*                 React sections, ballot demo, forms

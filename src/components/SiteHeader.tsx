@@ -1,12 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  // Publish the sticky header's real height (it varies by screen size) as --header-h,
+  // so in-page links scroll their section to just below the header instead of under it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty("--header-h", `${el.offsetHeight}px`);
+    set();
+    const observer = new ResizeObserver(set);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <header className="nav">
+    <header className="nav" ref={headerRef}>
       <div className="container nav-wrap">
         <Link aria-label="Rank America home" className="brand rank-america-brand" href="/" onClick={() => setOpen(false)}>
           <img alt="Rank America" src="/assets/rank-america-logo-dark.png" />
